@@ -278,14 +278,9 @@ class Processor(ActionService):
 
         try:
 
-            if handler.inputs or handler.outputs:
-                artifacts = await self._execute_typed(
-                    handler, params, flow,
-                )
-            else:
-                artifacts = await self._execute_legacy(
-                    handler, params, flow,
-                )
+            artifacts = await self._execute_typed(
+                handler, params, flow,
+            )
 
         except HandlerError:
             raise
@@ -305,6 +300,20 @@ class Processor(ActionService):
             artifacts=json.dumps(artifacts),
         )
 
+    def _check_artifact_type(self, name, actual, expected):
+        if isinstance(expected, list):
+            if actual not in expected:
+                raise HandlerError(
+                    f"Input '{name}': expected one of "
+                    f"{expected}, got {actual}"
+                )
+        else:
+            if actual != expected:
+                raise HandlerError(
+                    f"Input '{name}': expected {expected}, "
+                    f"got {actual}"
+                )
+
     async def _execute_typed(self, handler, params, flow):
 
         inputs = {}
@@ -318,11 +327,7 @@ class Processor(ActionService):
                 )
             expected = decl["artifact-type"]
             actual = entry.get("artifact-type", "")
-            if actual != expected:
-                raise HandlerError(
-                    f"Input '{name}': expected {expected}, "
-                    f"got {actual}"
-                )
+            self._check_artifact_type(name, actual, expected)
             inputs[name] = entry["artifact"]
 
         result = await handler.execute(inputs, flow)
@@ -334,26 +339,22 @@ class Processor(ActionService):
                 raise HandlerError(
                     f"Handler did not produce output '{name}'"
                 )
-            artifacts[name] = {
-                "artifact-type": decl["artifact-type"],
-                "artifact": data,
-            }
+            expected = decl["artifact-type"]
+            if isinstance(expected, list):
+                if not isinstance(data, dict) or "artifact-type" not in data:
+                    raise HandlerError(
+                        f"Output '{name}': polymorphic output must "
+                        f"include artifact-type"
+                    )
+                self._check_artifact_type(name, data["artifact-type"], expected)
+                artifacts[name] = data
+            else:
+                artifacts[name] = {
+                    "artifact-type": expected,
+                    "artifact": data,
+                }
 
         return artifacts
-
-    async def _execute_legacy(self, handler, params, flow):
-
-        input_artifacts = params.pop("_input_artifacts", [])
-        artifact_type, artifact = await handler.execute(
-            params, input_artifacts, flow,
-        )
-
-        return {
-            "output": {
-                "artifact-type": artifact_type,
-                "artifact": artifact,
-            }
-        }
 
     async def _execute_remote(self, request, params, client):
 

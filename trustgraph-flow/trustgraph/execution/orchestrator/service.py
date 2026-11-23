@@ -339,15 +339,6 @@ class Processor(FlowProcessor):
 
         resolved = self._resolve_params(raw_params, results)
 
-        input_artifacts = []
-        for dep_id in step.get("depends-on", []):
-            dep_result = results.get(dep_id)
-            if dep_result:
-                for entry in dep_result.values():
-                    input_artifacts.append(entry)
-        if input_artifacts:
-            resolved["_input_artifacts"] = input_artifacts
-
         policy = flow("policy-request")
         if policy:
             ingress = await policy.evaluate(

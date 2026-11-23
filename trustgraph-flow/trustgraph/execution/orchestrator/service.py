@@ -446,12 +446,7 @@ class Processor(FlowProcessor):
     def _resolve_params(self, raw_params, results):
         resolved = {}
         for key, value in raw_params.items():
-            if not isinstance(value, str):
-                resolved[key] = value
-                continue
-            if value.startswith("str:"):
-                resolved[key] = value[4:]
-            elif value.startswith("ref:"):
+            if isinstance(value, str) and value.startswith("ref:"):
                 parts = value[4:].split(":", 1)
                 if len(parts) != 2:
                     raise RuntimeError(
@@ -473,8 +468,14 @@ class Processor(FlowProcessor):
                         f"step '{ref_step_id}'"
                     )
                 resolved[key] = artifact
-            else:
+            elif isinstance(value, dict):
                 resolved[key] = value
+            else:
+                raise RuntimeError(
+                    f"Unexpected param value for '{key}': "
+                    f"expected artifact dict or ref: string, "
+                    f"got {type(value).__name__}"
+                )
         return resolved
 
     async def _send_response(self, flow, request, results):

@@ -276,18 +276,23 @@ class Processor(ActionService):
             f"run {request.run_id} step {request.step_id}"
         )
 
-        input_artifacts = params.pop("_input_artifacts", [])
-
         try:
-            result = await handler.execute(params, input_artifacts, flow)
+
+            if handler.inputs or handler.outputs:
+                artifacts = await self._execute_typed(
+                    handler, params, flow,
+                )
+            else:
+                artifacts = await self._execute_legacy(
+                    handler, params, flow,
+                )
+
         except HandlerError:
             raise
         except Exception as e:
             raise HandlerError(
                 f"Handler {capability} failed: {e}"
             ) from e
-
-        artifacts = self._wrap_handler_result(result)
 
         logger.info(
             f"Capability {capability} produced "
@@ -300,21 +305,55 @@ class Processor(ActionService):
             artifacts=json.dumps(artifacts),
         )
 
-    def _wrap_handler_result(self, result):
-        if isinstance(result, tuple) and len(result) == 2:
-            artifact_type, artifact = result
-            return {
-                "output": {
-                    "artifact-type": artifact_type,
-                    "artifact": artifact,
-                }
+    async def _execute_typed(self, handler, params, flow):
+
+        inputs = {}
+        for name, decl in handler.inputs.items():
+            entry = params.get(name)
+            if entry is None:
+                if decl.get("optional"):
+                    continue
+                raise HandlerError(
+                    f"Missing input '{name}'"
+                )
+            expected = decl["artifact-type"]
+            actual = entry.get("artifact-type", "")
+            if actual != expected:
+                raise HandlerError(
+                    f"Input '{name}': expected {expected}, "
+                    f"got {actual}"
+                )
+            inputs[name] = entry["artifact"]
+
+        result = await handler.execute(inputs, flow)
+
+        artifacts = {}
+        for name, decl in handler.outputs.items():
+            data = result.get(name)
+            if data is None:
+                raise HandlerError(
+                    f"Handler did not produce output '{name}'"
+                )
+            artifacts[name] = {
+                "artifact-type": decl["artifact-type"],
+                "artifact": data,
             }
-        if isinstance(result, dict):
-            return result
-        raise HandlerError(
-            f"Handler returned unexpected type: "
-            f"{type(result).__name__}"
+
+        return artifacts
+
+    async def _execute_legacy(self, handler, params, flow):
+
+        input_artifacts = params.pop("_input_artifacts", [])
+        artifact_type, artifact = await handler.execute(
+            params, input_artifacts, flow,
         )
+
+        return {
+            "output": {
+                "artifact-type": artifact_type,
+                "artifact": artifact,
+            }
+        }
 
     async def _execute_remote(self, request, params, client):
 

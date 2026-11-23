@@ -9,6 +9,15 @@ class HandlerError(Exception):
     pass
 
 
+class ActionHandler:
+
+    inputs = {}
+    outputs = {}
+
+    async def execute(self, inputs, flow):
+        raise NotImplementedError
+
+
 def get_param(params, key, required=True):
     value = params.get(key, "")
     if required and not value:

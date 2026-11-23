@@ -259,10 +259,11 @@ class Processor(ActionService):
     async def execute(self, workspace, request, flow):
 
         capability = request.capability
+        params = json.loads(request.params) if request.params else {}
 
         remote = self.remote_actions.get(workspace, {}).get(capability)
         if remote:
-            return await self._execute_remote(request, remote)
+            return await self._execute_remote(request, params, remote)
 
         handler = self.handlers.get(capability)
         if handler is None:
@@ -275,12 +276,10 @@ class Processor(ActionService):
             f"run {request.run_id} step {request.step_id}"
         )
 
+        input_artifacts = params.pop("_input_artifacts", [])
+
         try:
-            artifact_type, artifact = await handler.execute(
-                request.params,
-                request.input_artifacts,
-                flow,
-            )
+            result = await handler.execute(params, input_artifacts, flow)
         except HandlerError:
             raise
         except Exception as e:
@@ -288,19 +287,38 @@ class Processor(ActionService):
                 f"Handler {capability} failed: {e}"
             ) from e
 
+        artifacts = self._wrap_handler_result(result)
+
         logger.info(
-            f"Capability {capability} produced {artifact_type} "
-            f"for step {request.step_id}"
+            f"Capability {capability} produced "
+            f"{list(artifacts.keys())} for step {request.step_id}"
         )
 
         return ActionResponse(
             run_id=request.run_id,
             step_id=request.step_id,
-            artifact_type=artifact_type,
-            artifact=artifact,
+            artifacts=json.dumps(artifacts),
         )
 
-    async def _execute_remote(self, request, client):
+    def _wrap_handler_result(self, result):
+        if isinstance(result, tuple) and len(result) == 2:
+            artifact_type, artifact = result
+            return {
+                "output": {
+                    "artifact-type": artifact_type,
+                    "artifact": artifact,
+                }
+            }
+        if isinstance(result, dict):
+            return result
+        raise HandlerError(
+            f"Handler returned unexpected type: "
+            f"{type(result).__name__}"
+        )
+
+    async def _execute_remote(self, request, params, client):
+
+        params.pop("_input_artifacts", None)
 
         logger.info(
             f"Executing remote action {request.capability} for "
@@ -312,14 +330,20 @@ class Processor(ActionService):
                 run_id=request.run_id,
                 step_id=request.step_id,
                 capability=request.capability,
-                params=request.params,
-                input_artifacts=request.input_artifacts,
+                params=params,
                 user_context=request.user_context,
             )
         except Exception as e:
             raise HandlerError(
                 f"Remote action {request.capability} failed: {e}"
             ) from e
+
+        artifacts = {
+            "output": {
+                "artifact-type": artifact_type,
+                "artifact": artifact,
+            }
+        }
 
         logger.info(
             f"Remote action {request.capability} produced "
@@ -329,8 +353,7 @@ class Processor(ActionService):
         return ActionResponse(
             run_id=request.run_id,
             step_id=request.step_id,
-            artifact_type=artifact_type,
-            artifact=artifact,
+            artifacts=json.dumps(artifacts),
         )
 
     @staticmethod

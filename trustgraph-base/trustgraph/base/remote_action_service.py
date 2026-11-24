@@ -106,16 +106,20 @@ class RemoteActionService(AsyncProcessor):
                 f"run {request.run_id} step {request.step_id}"
             )
 
-            artifact_type, artifact = await self.execute(
-                inputs, user_context,
-            )
+            result = await self.execute(inputs, user_context)
+
+            artifacts = {}
+            for name, (artifact_type, artifact) in result.items():
+                artifacts[name] = {
+                    "artifact-type": artifact_type,
+                    "artifact": artifact,
+                }
 
             await self._producer_handle.send(
                 RemoteActionResponse(
                     run_id=request.run_id,
                     step_id=request.step_id,
-                    artifact_type=artifact_type,
-                    artifact=json.dumps(artifact) if artifact else "{}",
+                    artifacts=json.dumps(artifacts),
                 ),
                 properties={"id": id}
             )

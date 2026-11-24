@@ -78,7 +78,7 @@ class Processor(RemoteActionService):
             f"user={user_context.user_id if user_context else 'anonymous'}"
         )
 
-        return "TabularArtifact", MOCK_DATA
+        return {"results": ("TabularArtifact", MOCK_DATA)}
 
     @staticmethod
     def add_args(parser):

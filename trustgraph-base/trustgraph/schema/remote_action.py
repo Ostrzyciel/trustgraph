@@ -17,6 +17,5 @@ class RemoteActionRequest:
 class RemoteActionResponse:
     run_id: str = ""
     step_id: str = ""
-    artifact_type: str = ""
-    artifact: str = ""
+    artifacts: str = ""
     error: Error | None = None

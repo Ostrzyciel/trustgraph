@@ -64,7 +64,7 @@ class Processor(RemoteActionService):
             f"user={user_context.user_id if user_context else 'anonymous'}"
         )
 
-        return "TextBlobArtifact", {"text": redacted}
+        return {"output": ("TextBlobArtifact", {"text": redacted})}
 
     @staticmethod
     def add_args(parser):

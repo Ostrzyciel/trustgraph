@@ -364,7 +364,7 @@ class Processor(ActionService):
         )
 
         try:
-            artifact_type, artifact = await client.call(
+            artifacts = await client.call(
                 run_id=request.run_id,
                 step_id=request.step_id,
                 capability=request.capability,
@@ -376,16 +376,9 @@ class Processor(ActionService):
                 f"Remote action {request.capability} failed: {e}"
             ) from e
 
-        artifacts = {
-            "output": {
-                "artifact-type": artifact_type,
-                "artifact": artifact,
-            }
-        }
-
         logger.info(
             f"Remote action {request.capability} produced "
-            f"{artifact_type} for step {request.step_id}"
+            f"{list(artifacts.keys())} for step {request.step_id}"
         )
 
         return ActionResponse(

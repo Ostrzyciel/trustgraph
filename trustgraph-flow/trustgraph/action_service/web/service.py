@@ -121,9 +121,9 @@ class Processor(RemoteActionService):
 
         soup = BeautifulSoup(response.text, "html.parser")
         if not soup:
-            return "TextBlobArtifact", {
+            return {"output": ("TextBlobArtifact", {
                 "text": "Failed to parse search results.",
-            }
+            })}
 
         results = []
         for result in soup.select(".result"):
@@ -178,7 +178,7 @@ class Processor(RemoteActionService):
 
         logger.info(f"Search returned {len(results)} results")
 
-        return "TextBlobArtifact", {"text": text}
+        return {"output": ("TextBlobArtifact", {"text": text})}
 
     async def _fetch(self, inputs):
 
@@ -220,7 +220,7 @@ class Processor(RemoteActionService):
 
         logger.info(f"Fetched {len(text)} characters from {url}")
 
-        return "TextBlobArtifact", {"text": text}
+        return {"output": ("TextBlobArtifact", {"text": text})}
 
     @staticmethod
     def add_args(parser):

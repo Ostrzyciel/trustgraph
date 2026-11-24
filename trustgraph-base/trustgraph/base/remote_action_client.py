@@ -54,9 +54,9 @@ class RemoteActionClient:
         if resp.error:
             raise RuntimeError(resp.error.message)
 
-        artifact = json.loads(resp.artifact) if resp.artifact else {}
+        artifacts = json.loads(resp.artifacts) if resp.artifacts else {}
 
-        return resp.artifact_type, artifact
+        return artifacts
 
     async def close(self):
         if self._client:

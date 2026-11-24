@@ -10,7 +10,6 @@ class RemoteActionRequest:
     step_id: str = ""
     capability: str = ""
     params: str = ""
-    input_artifacts: str = ""
     user_context: str = ""
 
 

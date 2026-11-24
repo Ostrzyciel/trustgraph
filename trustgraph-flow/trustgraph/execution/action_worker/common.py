@@ -115,12 +115,6 @@ def term_dict_to_str(d):
     return ""
 
 
-def get_input_artifact(input_artifacts, artifact_type):
-    for artifact in input_artifacts:
-        if artifact.get("artifact-type") == artifact_type:
-            return artifact.get("artifact", {})
-    return None
-
 
 def format_tabular(artifact):
     columns = artifact.get("columns", [])

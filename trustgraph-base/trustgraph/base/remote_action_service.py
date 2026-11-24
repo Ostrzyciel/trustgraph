@@ -88,10 +88,14 @@ class RemoteActionService(AsyncProcessor):
             params = (
                 json.loads(request.params) if request.params else {}
             )
-            input_artifacts = (
-                json.loads(request.input_artifacts)
-                if request.input_artifacts else []
-            )
+
+            inputs = {}
+            for key, value in params.items():
+                if isinstance(value, dict) and "artifact" in value:
+                    inputs[key] = value["artifact"]
+                else:
+                    inputs[key] = value
+
             user_context = None
             if request.user_context:
                 uc_dict = json.loads(request.user_context)
@@ -103,7 +107,7 @@ class RemoteActionService(AsyncProcessor):
             )
 
             artifact_type, artifact = await self.execute(
-                params, input_artifacts, user_context,
+                inputs, user_context,
             )
 
             await self._producer_handle.send(
@@ -142,7 +146,7 @@ class RemoteActionService(AsyncProcessor):
                 properties={"id": id if id else "unknown"}
             )
 
-    async def execute(self, params, input_artifacts, user_context):
+    async def execute(self, inputs, user_context):
         raise NotImplementedError("Subclasses must implement execute()")
 
     @staticmethod

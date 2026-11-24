@@ -32,7 +32,7 @@ class RemoteActionClient:
 
     async def call(
         self, run_id, step_id, capability, params,
-        input_artifacts=None, user_context=None, timeout=300,
+        user_context=None, timeout=300,
     ):
         client = await self._ensure_client()
 
@@ -46,9 +46,6 @@ class RemoteActionClient:
                 step_id=step_id,
                 capability=capability,
                 params=json.dumps(params) if params else "{}",
-                input_artifacts=(
-                    json.dumps(input_artifacts) if input_artifacts else "[]"
-                ),
                 user_context=uc_str,
             ),
             timeout=timeout,

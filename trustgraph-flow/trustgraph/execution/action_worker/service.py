@@ -358,8 +358,6 @@ class Processor(ActionService):
 
     async def _execute_remote(self, request, params, client):
 
-        params.pop("_input_artifacts", None)
-
         logger.info(
             f"Executing remote action {request.capability} for "
             f"run {request.run_id} step {request.step_id}"
